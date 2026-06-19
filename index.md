@@ -22,7 +22,7 @@ body {
 }
 
 /* ==========================================================================
-   LAYOUT SIDEBAR / SETBAR KIRI
+   LAYOUT SIDEBAR / PANEL NAVIGASI KIRI
    ========================================================================== */
 .sidebar {
     width: 280px;
@@ -153,7 +153,7 @@ body {
     to { opacity: 1; transform: translateY(0); }
 }
 
-/* 🌟 DESAIN TOMBOL SELAMAT DATANG & AKSI KEREN */
+/* TOMBOL AKSI */
 .btn-cool {
     display: inline-block;
     padding: 14px 35px;
@@ -256,6 +256,14 @@ select {
 }
 
 .hidden { display: none !important; }
+
+/* Status Loading Animasi */
+.loader-box {
+    text-align: center;
+    padding: 30px;
+    font-weight: 500;
+    color: #2563eb;
+}
 </style>
 </head>
 
@@ -286,7 +294,7 @@ select {
         
         <div class="menu-section-title">Evaluasi</div>
         <div class="menu-item" id="menu-rekap" onclick="bukaMenu('rekap')">
-            <i data-lucide="bar-chart-2" style="width: 18px;"></i> Lembar Hasil Utama
+            <i data-lucide="bar-chart-2" style="width: 18px;"></i> Rekap Nilai
         </div>
     </div>
 
@@ -332,13 +340,15 @@ select {
         <div id="sub-beranda" class="content-box">
             <h3 style="margin-bottom: 10px; color: #0f172a;">Selamat Datang di Pusat Evaluasi Mandiri!</h3>
             <p id="userDataInfo" style="margin-bottom: 20px; color: #475569; font-size: 1rem;"></p>
-            <p style="line-height: 1.6; color: #64748b;">Gunakan panel menu navigasi di **sebelah kiri** layar laptop/komputer Anda untuk memilih Lembar Kuis atau melihat Rekap Nilai yang sudah dikerjakan.</p>
+            <p style="line-height: 1.6; color: #64748b;">Gunakan panel menu navigasi di <b>sebelah kiri</b> layar laptop/komputer Anda untuk memilih Lembar Kuis atau melihat Rekap Nilai yang sudah dikerjakan.</p>
             <button class="btn-logout" onclick="prosesLogout()">Keluar Akun</button>
         </div>
 
         <div id="sub-ujian" class="content-box hidden">
+            <div id="statusMendownload" class="loader-box hidden">⏳ Sedang memuat daftar soal langsung dari Google Sheets...</div>
+            
             <div id="listSoalKuis"></div>
-            <button class="btn-cool" style="background: linear-gradient(45deg, #10b981, #059669); width: 100%; margin-top: 25px; box-shadow: 0 6px 18px rgba(16, 185, 129, 0.3);" onclick="kalkulasiNilai()">Simpan Semua Jawaban</button>
+            <button id="btnSimpanJawaban" class="btn-cool" style="background: linear-gradient(45deg, #10b981, #059669); width: 100%; margin-top: 25px; box-shadow: 0 6px 18px rgba(16, 185, 129, 0.3);" onclick="kalkulasiNilaiReal()">Simpan Semua Jawaban</button>
         </div>
 
         <div id="sub-rekap" class="content-box hidden" style="text-align: center;">
@@ -351,8 +361,8 @@ select {
 
             <div style="max-width: 480px; margin: 0 auto; text-align: left; background: #f8fafc; padding: 25px; border-radius: 14px; border: 1px solid #e2e8f0;">
                 <h4 style="margin-bottom: 15px; color: #1e293b; font-size: 0.95rem; text-transform: uppercase; letter-spacing: 0.5px;">Rincian Nilai Capaian:</h4>
-                <p style="margin-bottom: 8px; font-size: 0.95rem;">Nilai Kuis 1 (200 Soal): <b id="rincianK1" style="color:#0f172a;">Belum Dikerjakan</b></p>
-                <p style="margin-bottom: 8px; font-size: 0.95rem;">Nilai Kuis 2 (200 Soal): <b id="rincianK2" style="color:#0f172a;">Belum Dikerjakan</b></p>
+                <p style="margin-bottom: 8px; font-size: 0.95rem;">Nilai Kuis 1: <b id="rincianK1" style="color:#0f172a;">Belum Dikerjakan</b></p>
+                <p style="margin-bottom: 8px; font-size: 0.95rem;">Nilai Kuis 2: <b id="rincianK2" style="color:#0f172a;">Belum Dikerjakan</b></p>
                 <p style="margin-bottom: 8px; font-size: 0.95rem;">Nilai Latihan 1: <b id="rincianL1" style="color:#0f172a;">Belum Dikerjakan</b></p>
                 <p style="margin-bottom: 0px; font-size: 0.95rem;">Nilai Latihan 2: <b id="rincianL2" style="color:#0f172a;">Belum Dikerjakan</b></p>
             </div>
@@ -363,15 +373,14 @@ select {
 </div>
 
 <script>
-// Kredensial Akun Sesuai Instruksi Baru
 const VALID_USER = {
     nim: "45223099",
     pass: "123"
 };
 
 let kategoriAktif = "beranda";
+let cacheSoalMataUjian = []; // Menyimpan baris array data soal yang ditarik dari backend
 
-// Inisialisasi awal paket ikon grafis sidebar
 lucide.createIcons();
 
 function pindahKeLoginBox() {
@@ -401,11 +410,9 @@ function muatTampilanAplikasi() {
     document.getElementById("view-welcome").classList.add("hidden");
     document.getElementById("view-login").classList.add("hidden");
     
-    // Aktifkan Layout Dasbor
     document.getElementById("leftSidebar").classList.remove("hidden");
     document.getElementById("view-dashboard").classList.remove("hidden");
     
-    // Pergeseran Konten Utama ke Sisi Kanan dari Sidebar Kiri
     let mainArea = document.getElementById("mainContentArea");
     mainArea.style.marginLeft = "280px";
     mainArea.style.width = "calc(100% - 280px)";
@@ -420,12 +427,10 @@ function muatTampilanAplikasi() {
 function bukaMenu(tipeMenu) {
     kategoriAktif = tipeMenu;
 
-    // Sinkronisasi Class Active Tombol Navigasi Sidebar Kiri
     document.querySelectorAll('.menu-item').forEach(el => el.classList.remove('active'));
     let targetMenu = document.getElementById("menu-" + tipeMenu);
     if (targetMenu) targetMenu.classList.add('active');
 
-    // Sembunyikan Seluruh Kontainer Konten Sisi Kanan
     document.getElementById("sub-beranda").classList.add("hidden");
     document.getElementById("sub-ujian").classList.add("hidden");
     document.getElementById("sub-rekap").classList.add("hidden");
@@ -437,59 +442,88 @@ function bukaMenu(tipeMenu) {
         document.getElementById("sub-beranda").classList.remove("hidden");
     } 
     else if (tipeMenu === 'rekap') {
-        headerTitle.innerText = "Lembar Hasil Utama";
+        headerTitle.innerText = "Rekap Nilai";
         document.getElementById("sub-rekap").classList.remove("hidden");
         tampilkanHalamanRekapData();
     } 
     else {
-        // Mode Lembar Pertanyaan
-        let formatJudul = "";
-        let limitSoal = 10;
+        let namaSheetTujuan = "";
+        if(tipeMenu === 'kuis1') { headerTitle.innerText = "Kuis Pancasila 1 (200 Soal)"; namaSheetTujuan = "Kuis1"; }
+        if(tipeMenu === 'kuis2') { headerTitle.innerText = "Kuis Pancasila 2 (200 Soal)"; namaSheetTujuan = "Kuis2"; }
+        if(tipeMenu === 'latihan1') { headerTitle.innerText = "Latihan Soal 1"; namaSheetTujuan = "Latihan1"; }
+        if(tipeMenu === 'latihan2') { headerTitle.innerText = "Latihan Soal 2"; namaSheetTujuan = "Latihan2"; }
 
-        if(tipeMenu === 'kuis1') { formatJudul = "Kuis Pancasila 1 (200 Soal)"; limitSoal = 200; }
-        if(tipeMenu === 'kuis2') { formatJudul = "Kuis Pancasila 2 (200 Soal)"; limitSoal = 200; }
-        if(tipeMenu === 'latihan1') { formatJudul = "Latihan Soal 1"; limitSoal = 10; }
-        if(tipeMenu === 'latihan2') { formatJudul = "Latihan Soal 2"; limitSoal = 10; }
-
-        headerTitle.innerText = formatJudul;
         document.getElementById("sub-ujian").classList.remove("hidden");
-        bangunDaftarPertanyaan(limitSoal, formatJudul);
+        
+        // Bersihkan area lama, munculkan animasi loading text, dan sembunyikan tombol simpan sementara waktu
+        document.getElementById("listSoalKuis").innerHTML = "";
+        document.getElementById("statusMendownload").classList.remove("hidden");
+        document.getElementById("btnSimpanJawaban").classList.add("hidden");
+
+        // PROSES PEMANGGILAN AKTIF KE KODE.GS UNTUK MENARIK DATA SOAL EXCEL
+        google.script.run.withSuccessHandler(function(response) {
+            document.getElementById("statusMendownload").classList.add("hidden");
+            
+            if (response.status === "success") {
+                cacheSoalMataUjian = response.data; // Simpan data soal ke dalam cache ram lokal halaman
+                bangunKomponenSoalAsli(response.data);
+                document.getElementById("btnSimpanJawaban").classList.remove("hidden");
+            } else {
+                document.getElementById("listSoalKuis").innerHTML = `<p style="color:red; text-align:center; font-weight:600; padding:20px;">Gagal memuat: ${response.message}</p>`;
+            }
+        }).ambilSoalDariExcel(namaSheetTujuan);
     }
 }
 
-function bangunDaftarPertanyaan(jumlah, namaJudul) {
+function bangunKomponenSoalAsli(daftarSoal) {
     let containerHtml = "";
-    for (let i = 1; i <= jumlah; i++) {
+    
+    if(daftarSoal.length === 0) {
+        containerHtml = `<p style="text-align:center; color:#64748b; padding:20px;">Sheet kuis ini terdeteksi masih kosong. Silakan periksa isi tabel di Google Sheets Anda.</p>`;
+        document.getElementById("listSoalKuis").innerHTML = containerHtml;
+        return;
+    }
+
+    for (let i = 0; i < daftarSoal.length; i++) {
         containerHtml += `
         <div class="question-block">
-            <p style="font-weight:600; margin-bottom:6px; color:#0f172a;">Pertanyaan Nomor ${i}:</p>
-            <p style="color:#475569; font-size:0.95rem; margin-bottom:10px;">Ini adalah simulasi teks soal butir Pancasila ke-${i} untuk modul pengerjaan ${namaJudul}.</p>
+            <p style="font-weight:600; margin-bottom:6px; color:#0f172a;">Pertanyaan Nomor ${i + 1}:</p>
+            <p style="color:#475569; font-size:0.95rem; margin-bottom:12px; white-space: pre-line;">${daftarSoal[i].pertanyaan}</p>
             <select id="opsiJawab${i}">
-                <option value="">-- Pilih Jawaban --</option>
-                <option value="A">A. Pilihan Jawaban A</option>
-                <option value="B">B. Pilihan Jawaban B</option>
-                <option value="C">C. Pilihan Jawaban C</option>
-                <option value="D">D. Pilihan Jawaban D</option>
+                <option value="">-- Pilih Jawaban Anda --</option>
+                <option value="A">A. ${daftarSoal[i].a}</option>
+                <option value="B">B. ${daftarSoal[i].b}</option>
+                <option value="C">C. ${daftarSoal[i].c}</option>
+                <option value="D">D. ${daftarSoal[i].d}</option>
             </select>
         </div>`;
     }
     document.getElementById("listSoalKuis").innerHTML = containerHtml;
 }
 
-function kalkulasiNilai() {
-    let jumlahSoal = (kategoriAktif === 'kuis1' || kategoriAktif === 'kuis2') ? 200 : 10;
-    let terisi = 0;
+function kalkulasiNilaiReal() {
+    let jawabanBenar = 0;
+    let totalSoalAktif = cacheSoalMataUjian.length;
 
-    for (let i = 1; i <= jumlahSoal; i++) {
-        let nilaiOpsi = document.getElementById("opsiJawab" + i).value;
-        if (nilaiOpsi !== "") terisi++;
+    if(totalSoalAktif === 0) {
+        alert("Tidak ada soal yang tersedia untuk dinilai.");
+        return;
     }
 
-    let kalkulasiAkhir = Math.round((terisi / jumlahSoal) * 100);
-    localStorage.setItem("store_nilai_" + kategoriAktif, kalkulasiAkhir);
-    localStorage.setItem("latest_score_view", kalkulasiAkhir);
+    for (let i = 0; i < totalSoalAktif; i++) {
+        let jawabanSiswa = document.getElementById("opsiJawab" + i).value;
+        
+        // Koreksi otomatis dicocokkan langsung dengan properti 'kunci' dari Google Sheets
+        if (jawabanSiswa === cacheSoalMataUjian[i].kunci) {
+            jawabanBenar++;
+        }
+    }
 
-    alert("Jawaban Berhasil Disimpan!\nNilai pengerjaan Anda: " + kalkulasiAkhir);
+    let hasilSkorAkhir = Math.round((jawabanBenar / totalSoalAktif) * 100);
+    localStorage.setItem("store_nilai_" + kategoriAktif, hasilSkorAkhir);
+    localStorage.setItem("latest_score_view", hasilSkorAkhir);
+
+    alert(`Kuis Selesai Terkoreksi!\nBenar: ${jawabanBenar} dari ${totalSoalAktif} Soal.\nSkor Anda: ${hasilSkorAkhir}`);
     
     refreshIndikatorSkor();
     bukaMenu('rekap');
@@ -520,7 +554,6 @@ function tampilkanHalamanRekapData() {
     document.getElementById("rincianL2").innerText = l2 !== null ? l2 + " Poin" : "Belum Dikerjakan";
 }
 
-// Pemeriksaan status login otomatis saat memuat ulang halaman browser
 if (localStorage.getItem("session_login") === "true") {
     muatTampilanAplikasi();
 }
@@ -528,4 +561,3 @@ if (localStorage.getItem("session_login") === "true") {
 
 </body>
 </html>
-
