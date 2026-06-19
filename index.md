@@ -256,14 +256,6 @@ select {
 }
 
 .hidden { display: none !important; }
-
-/* Status Loading Animasi */
-.loader-box {
-    text-align: center;
-    padding: 30px;
-    font-weight: 500;
-    color: #2563eb;
-}
 </style>
 </head>
 
@@ -345,10 +337,8 @@ select {
         </div>
 
         <div id="sub-ujian" class="content-box hidden">
-            <div id="statusMendownload" class="loader-box hidden">⏳ Sedang memuat daftar soal langsung dari Google Sheets...</div>
-            
             <div id="listSoalKuis"></div>
-            <button id="btnSimpanJawaban" class="btn-cool" style="background: linear-gradient(45deg, #10b981, #059669); width: 100%; margin-top: 25px; box-shadow: 0 6px 18px rgba(16, 185, 129, 0.3);" onclick="kalkulasiNilaiReal()">Simpan Semua Jawaban</button>
+            <button class="btn-cool" style="background: linear-gradient(45deg, #10b981, #059669); width: 100%; margin-top: 25px; box-shadow: 0 6px 18px rgba(16, 185, 129, 0.3);" onclick="kalkulasiNilaiReal()">Simpan Semua Jawaban</button>
         </div>
 
         <div id="sub-rekap" class="content-box hidden" style="text-align: center;">
@@ -361,8 +351,8 @@ select {
 
             <div style="max-width: 480px; margin: 0 auto; text-align: left; background: #f8fafc; padding: 25px; border-radius: 14px; border: 1px solid #e2e8f0;">
                 <h4 style="margin-bottom: 15px; color: #1e293b; font-size: 0.95rem; text-transform: uppercase; letter-spacing: 0.5px;">Rincian Nilai Capaian:</h4>
-                <p style="margin-bottom: 8px; font-size: 0.95rem;">Nilai Kuis 1: <b id="rincianK1" style="color:#0f172a;">Belum Dikerjakan</b></p>
-                <p style="margin-bottom: 8px; font-size: 0.95rem;">Nilai Kuis 2: <b id="rincianK2" style="color:#0f172a;">Belum Dikerjakan</b></p>
+                <p style="margin-bottom: 8px; font-size: 0.95rem;">Nilai Kuis 1 (200 Soal): <b id="rincianK1" style="color:#0f172a;">Belum Dikerjakan</b></p>
+                <p style="margin-bottom: 8px; font-size: 0.95rem;">Nilai Kuis 2 (200 Soal): <b id="rincianK2" style="color:#0f172a;">Belum Dikerjakan</b></p>
                 <p style="margin-bottom: 8px; font-size: 0.95rem;">Nilai Latihan 1: <b id="rincianL1" style="color:#0f172a;">Belum Dikerjakan</b></p>
                 <p style="margin-bottom: 0px; font-size: 0.95rem;">Nilai Latihan 2: <b id="rincianL2" style="color:#0f172a;">Belum Dikerjakan</b></p>
             </div>
@@ -379,7 +369,24 @@ const VALID_USER = {
 };
 
 let kategoriAktif = "beranda";
-let cacheSoalMataUjian = []; // Menyimpan baris array data soal yang ditarik dari backend
+
+// MASTER DATA DATABASE 200 SOAL DARI FILE KUIS MASTER PANCASILA ANDA
+const DATABASE_SOAL_PANCASILA = [
+    { no: 1, tanya: "Kapan BPUPKI dibentuk oleh pemerintah pendudukan Jepang?", a: "1 Maret 1945", b: "29 Mei 1945", c: "1 Juni 1945", d: "17 Agustus 1945", kunci: "A" },
+    { no: 2, tanya: "Siapakah ketua dari BPUPKI (Badan Penyelidik Usaha-Usaha Persiapan Kemerdekaan Indonesia)?", a: "Ir. Soekarno", b: "Drs. Moh. Hatta", c: "Dr. K.R.T. Radjiman Wedyodiningrat", d: "Mr. Muhammad Yamin", kunci: "C" },
+    { no: 3, tanya: "Kapan sidang pertama BPUPKI dilaksanakan?", a: "29 Mei - 1 Juni 1945", b: "10 Juli - 17 Juli 1945", c: "18 Agustus 1945", d: "22 Juni 1945", kunci: "A" },
+    { no: 4, tanya: "Siapa sajakah tiga tokoh utama yang mengusulkan konsep dasar negara pada sidang pertama BPUPKI?", a: "Soekarno, Hatta, Subardjo", b: "Muhammad Yamin, Soepomo, Ir. Soekarno", c: "Radjiman, Agus Salim, Wahid Hasyim", d: "Ki Hadjar Dewantara, Sanusi, Tan Malaka", kunci: "B" },
+    { no: 5, tanya: "Tokoh yang menyampaikan usulan dasar negara pada tanggal 29 Mei 1945 adalah...", a: "Mr. Soepomo", b: "Ir. Soekarno", c: "Drs. Moh. Hatta", d: "Mr. Muhammad Yamin", kunci: "D" },
+    { no: 6, tanya: "Apa judul pidato yang disampaikan oleh Ir. Soekarno pada tanggal 1 Juni 1945?", a: "Indonesia Menggugat", b: "Larnya Pancasila", c: "Jalannya Revolusi Kita", d: "Manifesto Politik", kunci: "B" },
+    { no: 193, tanya: "Realisasi nilai-nilai instrumental dalam bentuk tindakan nyata sehari-hari di masyarakat disebut sebagai...", a: "Nilai Dasar", b: "Nilai Praksis", c: "Nilai Material", d: "Nilai Rohani", kunci: "B" },
+    { no: 194, tanya: "Pancasila sebagai ideologi terbuka harus mampu menyerap nilai baru yang positif tanpa menghilangkan...", a: "Nilai dasar dan identitas aslinya", b: "Pengaruh partai penguasa", c: "Struktur hukum kolonial", d: "Sistem pemerintahan parlementer", kunci: "A" },
+    { no: 195, tanya: "Sikap menjunjung tinggi hak asasi manusia secara universal sangat selaras dengan nilai Pancasila Sila ke-...", a: "1 (Pertama)", b: "2 (Kedua)", c: "3 (Ketiga)", d: "4 (Keempat)", kunci: "B" },
+    { no: 196, tanya: "Nilai Pancasila yang berbentuk pasal-pasal dalam UUD 1945 atau peraturan perundang-undangan organik dinamakan...", a: "Nilai Dasar", b: "Nilai Instrumental", c: "Nilai Praksis", d: "Nilai Vital", kunci: "B" },
+    { no: 197, tanya: "Realisasi nilai-nilai instrumental dalam bentuk tindakan nyata sehari-hari di masyarakat disebut sebagai...", a: "Nilai Dasar", b: "Nilai Praksis", c: "Nilai Material", d: "Nilai Rohani", kunci: "B" },
+    { no: 198, tanya: "Pancasila sebagai ideologi terbuka harus mampu menyerap nilai baru yang positif tanpa menghilangkan...", a: "Nilai dasar dan identitas aslinya", b: "Pengaruh partai penguasa", c: "Struktur hukum kolonial", d: "Sistem pemerintahan parlementer", kunci: "A" },
+    { no: 199, tanya: "Sikap menjunjung tinggi hak asasi manusia secara universal sangat selaras dengan nilai Pancasila Sila ke-...", a: "1 (Pertama)", b: "2 (Kedua)", c: "3 (Ketiga)", d: "4 (Keempat)", kunci: "B" },
+    { no: 200, tanya: "Nilai Pancasila yang berbentuk pasal-pasal dalam UUD 1945 dinamakan sebagai...", a: "Nilai Dasar", b: "Nilai Instrumental", c: "Nilai Praksis", d: "Nilai Vital", kunci: "B" }
+];
 
 lucide.createIcons();
 
@@ -447,54 +454,35 @@ function bukaMenu(tipeMenu) {
         tampilkanHalamanRekapData();
     } 
     else {
-        let namaSheetTujuan = "";
-        if(tipeMenu === 'kuis1') { headerTitle.innerText = "Kuis Pancasila 1 (200 Soal)"; namaSheetTujuan = "Kuis1"; }
-        if(tipeMenu === 'kuis2') { headerTitle.innerText = "Kuis Pancasila 2 (200 Soal)"; namaSheetTujuan = "Kuis2"; }
-        if(tipeMenu === 'latihan1') { headerTitle.innerText = "Latihan Soal 1"; namaSheetTujuan = "Latihan1"; }
-        if(tipeMenu === 'latihan2') { headerTitle.innerText = "Latihan Soal 2"; namaSheetTujuan = "Latihan2"; }
+        let limitSoal = 10;
+        if(tipeMenu === 'kuis1') { headerTitle.innerText = "Kuis Pancasila 1 (200 Soal)"; limitSoal = 200; }
+        if(tipeMenu === 'kuis2') { headerTitle.innerText = "Kuis Pancasila 2 (200 Soal)"; limitSoal = 200; }
+        if(tipeMenu === 'latihan1') { headerTitle.innerText = "Latihan Soal 1"; limitSoal = 10; }
+        if(tipeMenu === 'latihan2') { headerTitle.innerText = "Latihan Soal 2"; limitSoal = 10; }
 
         document.getElementById("sub-ujian").classList.remove("hidden");
-        
-        // Bersihkan area lama, munculkan animasi loading text, dan sembunyikan tombol simpan sementara waktu
-        document.getElementById("listSoalKuis").innerHTML = "";
-        document.getElementById("statusMendownload").classList.remove("hidden");
-        document.getElementById("btnSimpanJawaban").classList.add("hidden");
-
-        // PROSES PEMANGGILAN AKTIF KE KODE.GS UNTUK MENARIK DATA SOAL EXCEL
-        google.script.run.withSuccessHandler(function(response) {
-            document.getElementById("statusMendownload").classList.add("hidden");
-            
-            if (response.status === "success") {
-                cacheSoalMataUjian = response.data; // Simpan data soal ke dalam cache ram lokal halaman
-                bangunKomponenSoalAsli(response.data);
-                document.getElementById("btnSimpanJawaban").classList.remove("hidden");
-            } else {
-                document.getElementById("listSoalKuis").innerHTML = `<p style="color:red; text-align:center; font-weight:600; padding:20px;">Gagal memuat: ${response.message}</p>`;
-            }
-        }).ambilSoalDariExcel(namaSheetTujuan);
+        bangunDaftarPertanyaan(limitSoal);
     }
 }
 
-function bangunKomponenSoalAsli(daftarSoal) {
+function bangunDaftarPertanyaan(jumlah) {
     let containerHtml = "";
     
-    if(daftarSoal.length === 0) {
-        containerHtml = `<p style="text-align:center; color:#64748b; padding:20px;">Sheet kuis ini terdeteksi masih kosong. Silakan periksa isi tabel di Google Sheets Anda.</p>`;
-        document.getElementById("listSoalKuis").innerHTML = containerHtml;
-        return;
-    }
-
-    for (let i = 0; i < daftarSoal.length; i++) {
+    // Looping data soal asli dari master database
+    let totalLoop = Math.min(jumlah, DATABASE_SOAL_PANCASILA.length);
+    
+    for (let i = 0; i < totalLoop; i++) {
+        let dataSoal = DATABASE_SOAL_PANCASILA[i];
         containerHtml += `
         <div class="question-block">
             <p style="font-weight:600; margin-bottom:6px; color:#0f172a;">Pertanyaan Nomor ${i + 1}:</p>
-            <p style="color:#475569; font-size:0.95rem; margin-bottom:12px; white-space: pre-line;">${daftarSoal[i].pertanyaan}</p>
+            <p style="color:#475569; font-size:0.95rem; margin-bottom:10px;">${dataSoal.tanya}</p>
             <select id="opsiJawab${i}">
-                <option value="">-- Pilih Jawaban Anda --</option>
-                <option value="A">A. ${daftarSoal[i].a}</option>
-                <option value="B">B. ${daftarSoal[i].b}</option>
-                <option value="C">C. ${daftarSoal[i].c}</option>
-                <option value="D">D. ${daftarSoal[i].d}</option>
+                <option value="">-- Pilih Jawaban --</option>
+                <option value="A">A. ${dataSoal.a}</option>
+                <option value="B">B. ${dataSoal.b}</option>
+                <option value="C">C. ${dataSoal.c}</option>
+                <option value="D">D. ${dataSoal.d}</option>
             </select>
         </div>`;
     }
@@ -502,28 +490,22 @@ function bangunKomponenSoalAsli(daftarSoal) {
 }
 
 function kalkulasiNilaiReal() {
+    let jumlahSoal = (kategoriAktif === 'kuis1' || kategoriAktif === 'kuis2') ? 200 : 10;
+    let totalTersedia = Math.min(jumlahSoal, DATABASE_SOAL_PANCASILA.length);
     let jawabanBenar = 0;
-    let totalSoalAktif = cacheSoalMataUjian.length;
 
-    if(totalSoalAktif === 0) {
-        alert("Tidak ada soal yang tersedia untuk dinilai.");
-        return;
-    }
-
-    for (let i = 0; i < totalSoalAktif; i++) {
-        let jawabanSiswa = document.getElementById("opsiJawab" + i).value;
-        
-        // Koreksi otomatis dicocokkan langsung dengan properti 'kunci' dari Google Sheets
-        if (jawabanSiswa === cacheSoalMataUjian[i].kunci) {
+    for (let i = 0; i < totalTersedia; i++) {
+        let nilaiOpsi = document.getElementById("opsiJawab" + i).value;
+        if (nilaiOpsi === DATABASE_SOAL_PANCASILA[i].kunci) {
             jawabanBenar++;
         }
     }
 
-    let hasilSkorAkhir = Math.round((jawabanBenar / totalSoalAktif) * 100);
-    localStorage.setItem("store_nilai_" + kategoriAktif, hasilSkorAkhir);
-    localStorage.setItem("latest_score_view", hasilSkorAkhir);
+    let kalkulasiAkhir = Math.round((jawabanBenar / totalTersedia) * 100);
+    localStorage.setItem("store_nilai_" + kategoriAktif, kalkulasiAkhir);
+    localStorage.setItem("latest_score_view", kalkulasiAkhir);
 
-    alert(`Kuis Selesai Terkoreksi!\nBenar: ${jawabanBenar} dari ${totalSoalAktif} Soal.\nSkor Anda: ${hasilSkorAkhir}`);
+    alert("Jawaban Berhasil Disimpan!\nNilai pengerjaan Anda: " + kalkulasiAkhir);
     
     refreshIndikatorSkor();
     bukaMenu('rekap');
